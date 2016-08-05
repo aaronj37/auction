@@ -6,11 +6,13 @@
  * Time: 10:08 PM
  */
 // echo "Hello Azeroth";
+include_once 'connect.php';
 
 
 
 Function getAuctions()
 {
+ global $APIKey;
  $url = "https://us.api.battle.net/wow/auction/data/hyjal?locale=en_US&apikey=$APIKey";
  $data = GetData($url);
  $data = json_decode($data, true);
