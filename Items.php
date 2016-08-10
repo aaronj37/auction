@@ -14,26 +14,39 @@ getItems();
 function getItems()
 {
     global $APIKey;
-    for ($i = 1; $i <= 1; $i++) {//82441
-        $ItemUrl = "https://us.api.battle.net/wow/item/65891?locale=en_US&apikey=$APIKey";
+    for ($i = 1; $i <= 150000; $i++) {//82441 Bolt of Windwool Cloth 72988 Windwool Cloth
+                                 //65891 Vial of the Sands
+                            //58480 Truegold
+//$i=44;
+
+        $ItemUrl = "https://us.api.battle.net/wow/item/$i?locale=en_US&apikey=$APIKey";
         $ItemData = json_decode(getData($ItemUrl), true);
         //var_dump($ItemData);
         if (isset($ItemData['status'])) {
-            echo "Not Found";
+           //echo "Itemid:$i Not Found";
             //var_dump($ItemData);
 
 
         } else {
         $ItemId=$ItemData['id'];
         $ItemName=$ItemData['name'];
+            $ItemName= str_replace("'","''",$ItemName);
         $ItemIcon=$ItemData['icon'];
         $ItemSourceId=$ItemData['itemSource']['sourceId'];
         $ItemSourceType=$ItemData['itemSource']['sourceType'];
+
+            $Query="Insert into items values('$ItemId','$ItemName','$ItemIcon','$ItemSourceId')";
+            pg_query($Query);
+            //echo $Query."<br>";
             if($ItemSourceType=='CREATED_BY_SPELL')
             {
                getRecipe($ItemId,$ItemSourceId);
             }
 
+        }
+        if($i%100==0)
+        {
+            sleep(1);
         }
 
 
@@ -58,6 +71,7 @@ function getRecipe($ItemId,$ItemSourceId)
     $RecipeData=array();
     $Url="http://www.wowhead.com/spell=$ItemSourceId";
     $html = file_get_html($Url);
+
     $output_array=array();
     foreach($html->find('.indent') as $e)
     {
@@ -82,9 +96,34 @@ function getRecipe($ItemId,$ItemSourceId)
 
 //var_dump($RecipeData);
         $MaterialsString= json_encode($RecipeData);
-
+        $MaterialsString= str_replace('"','',$MaterialsString);
+//echo $MaterialsString;
     }
-   $RecipeQuery = "Insert into recipes values('$ItemSourceId','$ItemId','$MaterialsString')";
+    foreach($html->find('tr') as $e2) {
+  //   echo $e2->outertext.'</br>';
+        $Text=$e2->innertext;
+        if(strpos($Text,'Cast time')!== false)
+        {
+            $Regex ="/<td>(\d*)/";
+            preg_match($Regex, $Text, $Output_array);
+            $CastTime=$Output_array[1];
+      //      var_dump($e2->outertext);
+        }
+        if(strpos($Text,'Cooldown')!== false)
+        {
+            $Regex ="/q0\">(\d*)/";
+            preg_match($Regex, $Text, $Output_array);
+            $CoolDown=0;
+            if(isset($Output_array[1]))
+            {$CoolDown=$Output_array[1];}
+
+            //      var_dump($e2->outertext);
+        }
+    }
+
+   $RecipeQuery = "Insert into recipes values('$ItemSourceId','$ItemId','$MaterialsString','$CastTime','$CoolDown');";
+  // echo $RecipeQuery."<br>";
+   pg_query($RecipeQuery);
 
 }
 

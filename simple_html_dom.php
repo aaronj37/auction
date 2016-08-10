@@ -122,6 +122,7 @@ class simple_html_dom_node
     // The "info" array - see HDOM_INFO_... for what each element contains.
     public $_ = array();
     public $tag_start = 0;
+    public $content;
     private $dom = null;
 
     function __construct($dom)
