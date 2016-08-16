@@ -14,43 +14,63 @@ getItems();
 function getItems()
 {
     global $APIKey;
+    $DQuery="Select distinct item_id from items";
+    $result=pg_query($DQuery);
+    $item_array=array();
+    while($row=pg_fetch_assoc($result))
+    {
+        array_push($item_array,$row['item_id']);
+    }
+    $InsertQuery="Insert into items values";
+    $RecipeQuery = "Insert into recipes values";
     for ($i = 1; $i <= 150000; $i++) {//82441 Bolt of Windwool Cloth 72988 Windwool Cloth
                                  //65891 Vial of the Sands
                             //58480 Truegold
 //$i=44;
-
-        $ItemUrl = "https://us.api.battle.net/wow/item/$i?locale=en_US&apikey=$APIKey";
-        $ItemData = json_decode(getData($ItemUrl), true);
+if( !in_array($i,$item_array)) {
+    $ItemUrl = "https://us.api.battle.net/wow/item/$i?locale=en_US&apikey=$APIKey";
+    $ItemData = json_decode(getData($ItemUrl), true);
+    //var_dump($ItemData);
+    if (isset($ItemData['status'])) {
+        //echo "Itemid:$i Not Found";
         //var_dump($ItemData);
-        if (isset($ItemData['status'])) {
-           //echo "Itemid:$i Not Found";
-            //var_dump($ItemData);
 
 
-        } else {
-        $ItemId=$ItemData['id'];
-        $ItemName=$ItemData['name'];
-            $ItemName= str_replace("'","''",$ItemName);
-        $ItemIcon=$ItemData['icon'];
-        $ItemSourceId=$ItemData['itemSource']['sourceId'];
-        $ItemSourceType=$ItemData['itemSource']['sourceType'];
-
-            $Query="Insert into items values('$ItemId','$ItemName','$ItemIcon','$ItemSourceId')";
-            pg_query($Query);
-            //echo $Query."<br>";
-            if($ItemSourceType=='CREATED_BY_SPELL')
-            {
-               getRecipe($ItemId,$ItemSourceId);
-            }
-
-        }
-        if($i%100==0)
+    } else {
+        if(!isset($ItemData['id']))
         {
-            sleep(1);
+            echo $i;
+            $i=10000000000;
+            break;
         }
+        else {
+            $ItemId = $ItemData['id'];
+            $ItemName = $ItemData['name'];
+            $ItemName = str_replace("'", "''", $ItemName);
+            $ItemIcon = $ItemData['icon'];
+            $ItemSourceId = $ItemData['itemSource']['sourceId'];
+            $ItemSourceType = $ItemData['itemSource']['sourceType'];
+            $InsertQuery .= "($ItemId,'$ItemName','$ItemIcon',$ItemSourceId),";
 
+
+            //echo $Query."<br>";
+            if ($ItemSourceType == 'CREATED_BY_SPELL') {
+                $RecipeQuery .= getRecipe($ItemId, $ItemSourceId);
+            }
+        }
+    }
+    if ($i % 100 == 0) {
+        sleep(1);
+    }
+}
 
     }
+
+
+    $InsertQuery= rtrim($InsertQuery, ",");
+    $RecipeQuery= rtrim($RecipeQuery, ",");
+    pg_query($InsertQuery);
+    pg_query($RecipeQuery);
 }
 
 function RecipeIterator($str)
@@ -121,9 +141,9 @@ function getRecipe($ItemId,$ItemSourceId)
         }
     }
 
-   $RecipeQuery = "Insert into recipes values('$ItemSourceId','$ItemId','$MaterialsString','$CastTime','$CoolDown');";
+    return "($ItemSourceId,$ItemId,'$MaterialsString',$CoolDown,$CastTime),";
   // echo $RecipeQuery."<br>";
-   pg_query($RecipeQuery);
+
 
 }
 
